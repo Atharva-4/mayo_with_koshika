@@ -19,6 +19,14 @@ namespace Mayo {
         static constexpr std::string_view Name = "cutting";
     };
 
+    class CommandMergeSTL : public Command
+    {
+    public:
+        CommandMergeSTL(IAppContext* context);
+        void execute() override;
+
+        static constexpr std::string_view Name = "merge.stl";
+    };
 
     // New: Hole filling commands
     class CommandHoleFillingFull : public Command {
@@ -39,13 +47,6 @@ namespace Mayo {
         static constexpr std::string_view Name = "holefilling.selected";
     };
 
-    class CommandMergeSTL : public Command
-    {
-    public:
-        CommandMergeSTL(IAppContext* context);
-        void execute() override;
-
-        static constexpr std::string_view Name = "merge.stl";
-    };
+    
 
 } // namespace Mayo

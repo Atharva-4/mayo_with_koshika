@@ -159,10 +159,11 @@ void MainWindow::createCommands()
 
 	// "koshika" commands
     this->addCommand<CommandCutting>();
+    this->addCommand<CommandMergeSTL>();
     // Add the hole-filling commands so their QAction can be used in menus
     this->addCommand<CommandHoleFillingFull>();
     this->addCommand<CommandHoleFillingSelected>();
-    this->addCommand<CommandMergeSTL>();
+    
 
 
 

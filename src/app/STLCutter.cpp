@@ -7,7 +7,47 @@
 #include <algorithm>
 
 namespace Mayo {
+    namespace {
 
+        Vec3 cross(const Vec3& a, const Vec3& b)
+        {
+            return {
+                a.y * b.z - a.z * b.y,
+                a.z * b.x - a.x * b.z,
+                a.x * b.y - a.y * b.x
+            };
+        }
+
+        float dot(const Vec3& a, const Vec3& b)
+        {
+            return a.x * b.x + a.y * b.y + a.z * b.z;
+        }
+
+        Vec3 normalize(const Vec3& v)
+        {
+            const float n = std::sqrt(dot(v, v));
+            if (n < 1e-12f)
+                return { 0.f, 0.f, 1.f };
+
+            return { v.x / n, v.y / n, v.z / n };
+        }
+
+        Facet makeOrientedFacet(const Vec3& hintNormal, const Vec3& v1, const Vec3& v2, const Vec3& v3)
+        {
+            Vec3 a = v1;
+            Vec3 b = v2;
+            Vec3 c = v3;
+
+            Vec3 triNormal = cross(b - a, c - a);
+            if (dot(triNormal, hintNormal) < 0.f) {
+                std::swap(b, c);
+                triNormal = cross(b - a, c - a);
+            }
+
+            return { normalize(triNormal), a, b, c };
+        }
+
+    }
     STLCutter::STLCutter() {}
 
     std::vector<Facet> STLCutter::loadSTL(const std::string& filename) {
@@ -134,17 +174,17 @@ namespace Mayo {
             Vec3 p1 = pos[0], p2 = pos[1], n1 = neg[0];
             Vec3 ip1 = interpolate(n1, p1, A, B, C, D);
             Vec3 ip2 = interpolate(n1, p2, A, B, C, D);
-            above.push_back({ f.normal, p1, p2, ip2 });
-            above.push_back({ f.normal, p1, ip2, ip1 });
-            below.push_back({ f.normal, n1, ip1, ip2 });
+            above.push_back(makeOrientedFacet(f.normal, p1, p2, ip2));
+            above.push_back(makeOrientedFacet(f.normal, p1, ip2, ip1));
+            below.push_back(makeOrientedFacet(f.normal, n1, ip1, ip2));
         }
         else if (pos.size() == 1 && neg.size() == 2) {
             Vec3 p1 = pos[0], n1 = neg[0], n2 = neg[1];
             Vec3 ip1 = interpolate(p1, n1, A, B, C, D);
             Vec3 ip2 = interpolate(p1, n2, A, B, C, D);
-            below.push_back({ f.normal, n1, n2, ip2 });
-            below.push_back({ f.normal, n1, ip2, ip1 });
-            above.push_back({ f.normal, p1, ip1, ip2 });
+            below.push_back(makeOrientedFacet(f.normal, n1, n2, ip2));
+            below.push_back(makeOrientedFacet(f.normal, n1, ip2, ip1));
+            above.push_back(makeOrientedFacet(f.normal, p1, ip1, ip2));
         }
     }
 

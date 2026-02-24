@@ -358,77 +358,62 @@ namespace Mayo {
         : Command(context)
     {
         auto action = new QAction(this);
-        action->setText(tr("Merge STL Files"));
-        action->setToolTip(tr("Merge two STL files into one"));
-        setAction(action);
-
-        connect(action, &QAction::triggered,
-            this, &CommandMergeSTL::execute);
+        action->setText(Command::tr("Merge STL Files"));
+        action->setToolTip(Command::tr("Merge multiple STL files into a single mesh"));
+        this->setAction(action);
     }
 
     void CommandMergeSTL::execute()
     {
-        QWidget* parent = widgetMain();
+        QWidget* parent = this->widgetMain();
 
-        // 1️⃣ Select first STL
-        QString file1 = QFileDialog::getOpenFileName(
+        const QStringList inPaths = QFileDialog::getOpenFileNames(
             parent,
-            tr("Select First STL"),
-            "",
-            tr("STL Files (*.stl)")
+            tr("Select STL files to merge"),
+            QString(),
+            tr("STL Files (*.stl);;All Files (*)")
         );
 
-        if (file1.isEmpty())
+        if (inPaths.size() < 2) {
+            if (!inPaths.isEmpty()) {
+                QMessageBox::information(parent, tr("Merge STL Files"), tr("Select at least two STL files."));
+            }
             return;
+        }
 
-        // 2️⃣ Select second STL
-        QString file2 = QFileDialog::getOpenFileName(
+        const QString outPath = QFileDialog::getSaveFileName(
             parent,
-            tr("Select Second STL"),
-            "",
-            tr("STL Files (*.stl)")
-        );
-
-        if (file2.isEmpty())
-            return;
-
-        // 3️⃣ Select output file
-        QString output = QFileDialog::getSaveFileName(
-            parent,
-            tr("Save Merged STL"),
+            tr("Save merged STL"),
             "merged.stl",
-            tr("STL Files (*.stl)")
+            tr("STL Files (*.stl);;All Files (*)")
         );
 
-        if (output.isEmpty())
+        if (outPath.isEmpty())
             return;
 
-        // 4️⃣ Run merger
-        STLMerger merger;
+        STLCutter cutter;
+        std::vector<Facet> mergedFacets;
 
-        if (!merger.loadSTL(file1.toStdString())) {
-            QMessageBox::critical(parent, tr("Error"),
-                tr("Failed to load first STL"));
-            return;
+        for (const QString& inPath : inPaths) {
+            const auto facets = cutter.loadSTL(inPath.toStdString());
+            if (facets.empty()) {
+                QMessageBox::warning(
+                    parent,
+                    tr("Merge STL Files"),
+                    tr("Failed to load or empty STL:\n%1").arg(inPath)
+                );
+                return;
+            }
+
+            mergedFacets.insert(mergedFacets.end(), facets.begin(), facets.end());
         }
 
-        if (!merger.loadSTL(file2.toStdString())) {
-            QMessageBox::critical(parent, tr("Error"),
-                tr("Failed to load second STL"));
-            return;
-        }
-
-        merger.merge();
-
-        if (!merger.saveMerged(output.toStdString())) {
-            QMessageBox::critical(parent, tr("Error"),
-                tr("Failed to save merged STL"));
-            return;
-        }
-
-        QMessageBox::information(parent,
-            tr("Merge Complete"),
-            tr("Merged STL saved successfully."));
+        cutter.saveSTL(outPath.toStdString(), mergedFacets);
+        QMessageBox::information(
+            parent,
+            tr("Merge STL Files"),
+            tr("Merged STL written to:\n%1").arg(outPath)
+        );
     }
 
 
