@@ -162,6 +162,8 @@ void MainWindow::createCommands()
     // Add the hole-filling commands so their QAction can be used in menus
     this->addCommand<CommandHoleFillingFull>();
     this->addCommand<CommandHoleFillingSelected>();
+    this->addCommand<CommandMergeSTL>();
+
 
 
 
@@ -228,10 +230,12 @@ void MainWindow::createMenus()
     { // koshika
         auto menu = m_ui->menuKoshika;
         fnAddAction(menu, CommandCutting::Name);
+        fnAddAction(menu, CommandMergeSTL::Name);
         // add Hole Filling submenu with two entries
         QMenu* menuHole = menu->addMenu(tr("Hole Filling"));
         fnAddAction(menuHole, CommandHoleFillingFull::Name);      // Fill Holes (All)
         fnAddAction(menuHole, CommandHoleFillingSelected::Name);  // Fill Holes (Selected - stub)
+
 
     }
  

@@ -558,6 +558,7 @@ if(Mayo_BuildApp)
     ${CMAKE_SOURCE_DIR}/src/app/STLCutter.cpp
     ${CMAKE_SOURCE_DIR}/src/app/StlHoleFillingCgal.cpp
     ${CMAKE_SOURCE_DIR}/src/app/StlHoleFillingWorker.cpp
+    ${CMAKE_SOURCE_DIR}/src/app/STLMerger.cpp
 )
 
 
