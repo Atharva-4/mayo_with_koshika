@@ -19,6 +19,7 @@
 
 #include "STLMerger.h"// Stl mergeing
 
+#include "StlCuttingWorker.h" // worker class for cutting
 #include <QtCore/QSignalBlocker>
 
 #include <gp_Dir.hxx>
@@ -45,6 +46,9 @@ namespace Mayo {
     }
     void CommandCutting::execute()
     {
+        if (m_isRunning)
+            return;
+
         GuiDocument* guiDoc = this->currentGuiDocument();
         if (!guiDoc)
             return;
@@ -53,10 +57,10 @@ namespace Mayo {
         if (filePath.empty())
             return;
 
-        const std::string inputFile = filePath.u8string();
+        const QString inputPath = QString::fromStdString(filePath.u8string());
 
         STLCutter cutter;
-        std::vector<Facet> facets = cutter.loadSTL(inputFile);
+        std::vector<Facet> facets = cutter.loadSTL(inputPath.toStdString());
         if (facets.empty()) {
             QMessageBox::warning(this->widgetMain(), tr("Split into two"), tr("Unable to load STL facets."));
             return;
@@ -202,9 +206,6 @@ namespace Mayo {
         guiDoc->v3dView()->RemoveClipPlane(clipPlanePreview);
         guiDoc->graphicsView().redraw();
 
-        std::vector<Facet> above, below;
-        cutter.cutMesh(facets, axis, cutValue, above, below);
-
         // ------------------------------------------
         // 3. Ask user for save directory
         // ------------------------------------------
@@ -217,16 +218,45 @@ namespace Mayo {
             return;
 
         // Build output file paths
-        std::string outAbove =
-            (dirPath + "/cut_1.stl").toStdString();
-        std::string outBelow =
-            (dirPath + "/cut_2.stl").toStdString();
+        const QString outAbove = dirPath + "/cut_1.stl";
+        const QString outBelow = dirPath + "/cut_2.stl";
 
-        // Save results
-        cutter.saveSTL(outAbove, above);
-        cutter.saveSTL(outBelow, below);
+        m_isRunning = true;
 
+        QThread* thread = new QThread(this);
+        auto* worker = new StlCuttingWorker();
+        worker->moveToThread(thread);
 
+        connect(thread, &QThread::started, this, [=]() {
+            QMetaObject::invokeMethod(worker, "process",
+                Qt::QueuedConnection,
+                Q_ARG(QString, inputPath),
+                Q_ARG(QString, outAbove),
+                Q_ARG(QString, outBelow),
+                Q_ARG(char, axis),
+                Q_ARG(float, cutValue));
+            });
+
+        connect(worker, &StlCuttingWorker::finished, this, [=]() {
+            QMessageBox::information(
+                this->widgetMain(),
+                tr("Split into two"),
+                tr("Cut STL files written to:\n%1\n%2").arg(outAbove, outBelow)
+            );
+            m_isRunning = false;
+            thread->quit();
+            });
+
+        connect(worker, &StlCuttingWorker::error, this, [=](const QString& msg) {
+            QMessageBox::critical(this->widgetMain(), tr("Split Error"), msg);
+            m_isRunning = false;
+            thread->quit();
+            });
+
+        connect(thread, &QThread::finished, worker, &QObject::deleteLater);
+        connect(thread, &QThread::finished, thread, &QObject::deleteLater);
+
+        thread->start();
     }
     /////////////////////////////////////////////////////////////////////
     //
@@ -334,9 +364,81 @@ namespace Mayo {
 
     void CommandHoleFillingSelected::execute()
     {
-        // Placeholder: We'll implement selection-aware filling next.
-        QWidget* parent = widgetMain();
-        QMessageBox::information(parent, tr("Hole Filling"), tr("Selected hole filling is not implemented yet."));
+        void CommandHoleFillingSelected::execute()
+        {
+            GuiDocument* guiDoc = this->currentGuiDocument();
+            if (!guiDoc)
+                return;
+
+            const FilePath filePath = guiDoc->document()->filePath();
+            if (filePath.empty())
+                return;
+
+            const QString inPath = QString::fromStdString(filePath.u8string());
+            QWidget* parent = widgetMain();
+
+            // Temporary selection input until 3D hole-pick UI is integrated
+            bool ok = false;
+            const QString txtIds = QInputDialog::getText(
+                parent,
+                tr("Fill Holes (Selected)"),
+                tr("Enter hole indices (comma separated, e.g. 0,2,5):"),
+                QLineEdit::Normal,
+                QString(),
+                &ok
+            );
+            if (!ok || txtIds.trimmed().isEmpty())
+                return;
+
+            QVector<int> selectedIds;
+            for (const QString& part : txtIds.split(',', Qt::SkipEmptyParts)) {
+                bool idOk = false;
+                const int id = part.trimmed().toInt(&idOk);
+                if (idOk)
+                    selectedIds.push_back(id);
+            }
+            if (selectedIds.isEmpty()) {
+                QMessageBox::warning(parent, tr("Fill Holes (Selected)"), tr("No valid hole index entered."));
+                return;
+            }
+
+            const QString outPath = QFileDialog::getSaveFileName(
+                parent,
+                tr("Save repaired STL"),
+                QFileInfo(inPath).completeBaseName() + "_selected_repaired.stl",
+                tr("STL Files (*.stl);;All Files (*)")
+            );
+            if (outPath.isEmpty())
+                return;
+
+            QThread* thread = new QThread(this);
+            auto* worker = new StlHoleFillingSelectedWorker();
+            worker->moveToThread(thread);
+
+            connect(thread, &QThread::started, this, [=]() {
+                QMetaObject::invokeMethod(worker, "process",
+                    Qt::QueuedConnection,
+                    Q_ARG(QString, inPath),
+                    Q_ARG(QString, outPath),
+                    Q_ARG(QVector<int>, selectedIds));
+                });
+
+            connect(worker, &StlHoleFillingSelectedWorker::finished, this, [=]() {
+                QMessageBox::information(parent, tr("Fill Holes (Selected)"),
+                    tr("Repaired STL written to:\n%1").arg(outPath));
+                thread->quit();
+                });
+
+            connect(worker, &StlHoleFillingSelectedWorker::error, this, [=](const QString& msg) {
+                QMessageBox::critical(parent, tr("Fill Holes (Selected) Error"), msg);
+                thread->quit();
+                });
+
+            connect(thread, &QThread::finished, worker, &QObject::deleteLater);
+            connect(thread, &QThread::finished, thread, &QObject::deleteLater);
+
+            thread->start();
+        }
     }
 
 

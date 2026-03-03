@@ -17,6 +17,9 @@ namespace Mayo {
         void execute() override;
 
         static constexpr std::string_view Name = "cutting";
+
+    private:
+        bool m_isRunning = false;
     };
 
     class CommandMergeSTL : public Command
