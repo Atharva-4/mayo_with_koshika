@@ -8,6 +8,7 @@
 #include <limits>
 #include <algorithm>
 #include <iterator> // <-- added
+#include <unordered_set>
 
 #include <CGAL/Polygon_mesh_processing/triangulate_hole.h>
 #include <CGAL/Polygon_mesh_processing/border.h>
@@ -178,6 +179,29 @@ namespace Mayo {
 
             std::vector<SurfaceMesh::Face_index> patch;
 
+            PMP::triangulate_hole(
+                mesh,
+                h,
+                std::back_inserter(patch),
+                CGAL::parameters::use_delaunay_triangulation(true)
+            );
+        }
+    }
+
+    void fillSelectedHolesCGAL(SurfaceMesh& mesh, const std::vector<int>& selectedHoleIds) {
+        std::vector<SurfaceMesh::Halfedge_index> boundaries;
+        PMP::extract_boundary_cycles(mesh, std::back_inserter(boundaries));
+
+        std::unordered_set<int> selectedSet(selectedHoleIds.begin(), selectedHoleIds.end());
+        for (int idx = 0; idx < static_cast<int>(boundaries.size()); ++idx) {
+            if (!selectedSet.count(idx))
+                continue;
+
+            SurfaceMesh::Halfedge_index h = boundaries[idx];
+            if (h == SurfaceMesh::null_halfedge())
+                continue;
+
+            std::vector<SurfaceMesh::Face_index> patch;
             PMP::triangulate_hole(
                 mesh,
                 h,

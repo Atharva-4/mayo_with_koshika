@@ -48,7 +48,7 @@ namespace Mayo {
 
     // ---- Hole filling using CGAL ----
     void fillHolesCGAL(SurfaceMesh& mesh);
-
+    void fillSelectedHolesCGAL(SurfaceMesh& mesh, const std::vector<int>& selectedHoleIds);
     // ---- Output ----
     void writeSTL(const std::string& filename, const SurfaceMesh& mesh);
 

@@ -48,7 +48,11 @@ namespace Mayo {
         CommandHoleFillingSelected(IAppContext* context);
         void execute() override;
         static constexpr std::string_view Name = "holefilling.selected";
+
+    private:
+        bool m_isRunning = false;
     };
+
 
     
 

@@ -27,6 +27,10 @@
 #include <gp_Vec.hxx>
 #include <Graphic3d_ClipPlane.hxx>
 
+#include "StlHoleFillingSelectedWorker.h"
+#include <QInputDialog>
+#include <QLineEdit>
+
 #include <algorithm>
 #include <QtWidgets/QCheckBox>
 #include <QtWidgets/QDoubleSpinBox>
@@ -364,90 +368,91 @@ namespace Mayo {
 
     void CommandHoleFillingSelected::execute()
     {
-        void CommandHoleFillingSelected::execute()
-        {
-            GuiDocument* guiDoc = this->currentGuiDocument();
-            if (!guiDoc)
-                return;
+        if (m_isRunning)
+            return;
 
-            const FilePath filePath = guiDoc->document()->filePath();
-            if (filePath.empty())
-                return;
+        GuiDocument* guiDoc = this->currentGuiDocument();
+        if (!guiDoc)
+            return;
 
-            const QString inPath = QString::fromStdString(filePath.u8string());
-            QWidget* parent = widgetMain();
+        const FilePath filePath = guiDoc->document()->filePath();
+        if (filePath.empty())
+            return;
 
-            // Temporary selection input until 3D hole-pick UI is integrated
-            bool ok = false;
-            const QString txtIds = QInputDialog::getText(
-                parent,
-                tr("Fill Holes (Selected)"),
-                tr("Enter hole indices (comma separated, e.g. 0,2,5):"),
-                QLineEdit::Normal,
-                QString(),
-                &ok
-            );
-            if (!ok || txtIds.trimmed().isEmpty())
-                return;
+        const QString inPath = QString::fromStdString(filePath.u8string());
+        QWidget* parent = widgetMain();
 
-            QVector<int> selectedIds;
-            for (const QString& part : txtIds.split(',', Qt::SkipEmptyParts)) {
-                bool idOk = false;
-                const int id = part.trimmed().toInt(&idOk);
-                if (idOk)
-                    selectedIds.push_back(id);
-            }
-            if (selectedIds.isEmpty()) {
-                QMessageBox::warning(parent, tr("Fill Holes (Selected)"), tr("No valid hole index entered."));
-                return;
-            }
+        bool ok = false;
+        const QString txtIds = QInputDialog::getText(
+            parent,
+            tr("Fill Holes (Selected)"),
+            tr("Enter hole indices (comma separated, e.g. 0,2,5):"),
+            QLineEdit::Normal,
+            QString(),
+            &ok
+        );
+        if (!ok || txtIds.trimmed().isEmpty())
+            return;
 
-            const QString outPath = QFileDialog::getSaveFileName(
-                parent,
-                tr("Save repaired STL"),
-                QFileInfo(inPath).completeBaseName() + "_selected_repaired.stl",
-                tr("STL Files (*.stl);;All Files (*)")
-            );
-            if (outPath.isEmpty())
-                return;
-
-            QThread* thread = new QThread(this);
-            auto* worker = new StlHoleFillingSelectedWorker();
-            worker->moveToThread(thread);
-
-            connect(thread, &QThread::started, this, [=]() {
-                QMetaObject::invokeMethod(worker, "process",
-                    Qt::QueuedConnection,
-                    Q_ARG(QString, inPath),
-                    Q_ARG(QString, outPath),
-                    Q_ARG(QVector<int>, selectedIds));
-                });
-
-            connect(worker, &StlHoleFillingSelectedWorker::finished, this, [=]() {
-                QMessageBox::information(parent, tr("Fill Holes (Selected)"),
-                    tr("Repaired STL written to:\n%1").arg(outPath));
-                thread->quit();
-                });
-
-            connect(worker, &StlHoleFillingSelectedWorker::error, this, [=](const QString& msg) {
-                QMessageBox::critical(parent, tr("Fill Holes (Selected) Error"), msg);
-                thread->quit();
-                });
-
-            connect(thread, &QThread::finished, worker, &QObject::deleteLater);
-            connect(thread, &QThread::finished, thread, &QObject::deleteLater);
-
-            thread->start();
+        QVector<int> selectedIds;
+        for (const QString& part : txtIds.split(',', Qt::SkipEmptyParts)) {
+            bool idOk = false;
+            const int id = part.trimmed().toInt(&idOk);
+            if (idOk)
+                selectedIds.push_back(id);
         }
+
+        if (selectedIds.isEmpty()) {
+            QMessageBox::warning(parent, tr("Fill Holes (Selected)"), tr("No valid hole index entered."));
+            return;
+        }
+
+        const QString outPath = QFileDialog::getSaveFileName(
+            parent,
+            tr("Save repaired STL"),
+            QFileInfo(inPath).completeBaseName() + "_selected_repaired.stl",
+            tr("STL Files (*.stl);;All Files (*)")
+        );
+        if (outPath.isEmpty())
+            return;
+
+        QThread* thread = new QThread(this);
+        auto* worker = new StlHoleFillingSelectedWorker();
+        worker->moveToThread(thread);
+        m_isRunning = true;
+
+        connect(thread, &QThread::started, this, [=]() {
+            QMetaObject::invokeMethod(worker, "process",
+                Qt::QueuedConnection,
+                Q_ARG(QString, inPath),
+                Q_ARG(QString, outPath),
+                Q_ARG(QVector<int>, selectedIds));
+            });
+
+        connect(worker, &StlHoleFillingSelectedWorker::finished, this, [=]() {
+            QMessageBox::information(parent, tr("Fill Holes (Selected)"),
+                tr("Repaired STL written to:\n%1").arg(outPath));
+            m_isRunning = false;
+            thread->quit();
+            });
+
+        connect(worker, &StlHoleFillingSelectedWorker::error, this, [=](const QString& msg) {
+            QMessageBox::critical(parent, tr("Fill Holes (Selected) Error"), msg);
+            m_isRunning = false;
+            thread->quit();
+            });
+
+        connect(thread, &QThread::finished, this, [this]() {
+            m_isRunning = false; // extra safety
+            });
+        connect(thread, &QThread::finished, worker, &QObject::deleteLater);
+        connect(thread, &QThread::finished, thread, &QObject::deleteLater);
+
+        thread->start();
     }
 
 
     
-    ///////////////////////////////////////////////////////////////////////////
-    //
-	//Merging Stl Files
-    //
-    //////////////////////////////////////////////////////////////////////////
 
 
  ///////////////////////////////////////////////////////////////////
