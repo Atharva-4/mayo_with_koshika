@@ -7,7 +7,7 @@
 #include <cmath>
 #include <limits>
 #include <algorithm>
-#include <iterator> // <-- added
+#include <iterator> 
 #include <unordered_set>
 
 #include <CGAL/Polygon_mesh_processing/triangulate_hole.h>
@@ -173,6 +173,7 @@ namespace Mayo {
         PMP::extract_boundary_cycles(mesh, std::back_inserter(boundaries));
         return boundaries.size();
     }
+
 
     void fillHolesCGAL(SurfaceMesh& mesh) {
         std::vector<SurfaceMesh::Halfedge_index> boundaries;

@@ -22,8 +22,10 @@
 #include "StlCuttingWorker.h" // worker class for cutting
 #include <QtCore/QSignalBlocker>
 
-#include "HoleFilling.h" //for hole filling selection
+//#include "HoleFilling.h" //for hole filling selection
 #include "HoleFillingUtils.h"
+#include <QListWidget>
+
 
 #include <gp_Dir.hxx>
 #include <gp_Pnt.hxx>
@@ -390,26 +392,60 @@ namespace Mayo {
             detectedHoleCount = static_cast<int>(*holeCount);
 
 
-        bool ok = false;
-        const QString txtIds = QInputDialog::getText(
-            parent,
-            tr("Fill Holes (Selected)"),
-             detectedHoleCount >= 0
-                ? tr("Detected %1 hole(s). Enter hole indices (comma separated, e.g. 0,2,5):").arg(detectedHoleCount)
-                : tr("Enter hole indices (comma separated, e.g. 0,2,5):"),
-            QLineEdit::Normal,
-            QString(),
-            &ok
-        );
-        if (!ok || txtIds.trimmed().isEmpty())
-            return;
-
+       
         QVector<int> selectedIds;
-        for (const QString& part : txtIds.split(',', Qt::SkipEmptyParts)) {
-            bool idOk = false;
-            const int id = part.trimmed().toInt(&idOk);
-            if (idOk)
-                selectedIds.push_back(id);
+
+        if (detectedHoleCount > 0) {
+            QDialog dlg(parent);
+            dlg.setWindowTitle(tr("Fill Holes (Selected)"));
+
+            auto* layout = new QVBoxLayout(&dlg);
+            auto* label = new QLabel(
+                tr("Detected %1 hole(s). Click to select holes, then press Enter/OK.").arg(detectedHoleCount),
+                &dlg
+            );
+            auto* list = new QListWidget(&dlg);
+            list->setSelectionMode(QAbstractItemView::MultiSelection);
+            for (int i = 0; i < detectedHoleCount; ++i)
+                list->addItem(QString::number(i));
+
+            auto* buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dlg);
+            connect(buttonBox, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
+            connect(buttonBox, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
+
+            layout->addWidget(label);
+            layout->addWidget(list);
+            layout->addWidget(buttonBox);
+
+            if (dlg.exec() != QDialog::Accepted)
+                return;
+
+            for (QListWidgetItem* item : list->selectedItems()) {
+                bool okId = false;
+                const int id = item->text().toInt(&okId);
+                if (okId)
+                    selectedIds.push_back(id);
+            }
+        }
+        else {
+            bool ok = false;
+            const QString txtIds = QInputDialog::getText(
+                parent,
+                tr("Fill Holes (Selected)"),
+                tr("Enter hole indices (comma separated, e.g. 0,2,5):"),
+                QLineEdit::Normal,
+                QString(),
+                &ok
+            );
+            if (!ok || txtIds.trimmed().isEmpty())
+                return;
+
+            for (const QString& part : txtIds.split(',', Qt::SkipEmptyParts)) {
+                bool idOk = false;
+                const int id = part.trimmed().toInt(&idOk);
+                if (idOk)
+                    selectedIds.push_back(id);
+            }
         }
 
         if (selectedIds.isEmpty()) {
