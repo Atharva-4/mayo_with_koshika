@@ -168,6 +168,12 @@ namespace Mayo {
 
     // Fill holes using CGAL Polygon Mesh Processing
 
+    std::size_t countHolesCGAL(const SurfaceMesh& mesh) {
+        std::vector<SurfaceMesh::Halfedge_index> boundaries;
+        PMP::extract_boundary_cycles(mesh, std::back_inserter(boundaries));
+        return boundaries.size();
+    }
+
     void fillHolesCGAL(SurfaceMesh& mesh) {
         std::vector<SurfaceMesh::Halfedge_index> boundaries;
 

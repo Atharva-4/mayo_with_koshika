@@ -47,6 +47,7 @@ namespace Mayo {
     SurfaceMesh convertToSurfaceMesh(const std::vector<Triangles>& triangles);
 
     // ---- Hole filling using CGAL ----
+    std::size_t countHolesCGAL(const SurfaceMesh& mesh);
     void fillHolesCGAL(SurfaceMesh& mesh);
     void fillSelectedHolesCGAL(SurfaceMesh& mesh, const std::vector<int>& selectedHoleIds);
     // ---- Output ----

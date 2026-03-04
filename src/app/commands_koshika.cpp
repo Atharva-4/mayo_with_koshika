@@ -22,6 +22,9 @@
 #include "StlCuttingWorker.h" // worker class for cutting
 #include <QtCore/QSignalBlocker>
 
+#include "HoleFilling.h" //for hole filling selection
+#include "HoleFillingUtils.h"
+
 #include <gp_Dir.hxx>
 #include <gp_Pnt.hxx>
 #include <gp_Vec.hxx>
@@ -361,7 +364,7 @@ namespace Mayo {
     {
         auto action = new QAction(this);
         action->setText(tr("Fill Holes (Selected)"));
-        action->setToolTip(tr("Fill only selected holes (not implemented yet)"));
+        action->setToolTip(tr("Fill only selected holes by index"));
         setAction(action);
         connect(action, &QAction::triggered, this, &CommandHoleFillingSelected::execute);
     }
@@ -382,11 +385,18 @@ namespace Mayo {
         const QString inPath = QString::fromStdString(filePath.u8string());
         QWidget* parent = widgetMain();
 
+        int detectedHoleCount = -1;
+        if (const auto holeCount = detectHoleCountFromStl(inPath.toStdString()))
+            detectedHoleCount = static_cast<int>(*holeCount);
+
+
         bool ok = false;
         const QString txtIds = QInputDialog::getText(
             parent,
             tr("Fill Holes (Selected)"),
-            tr("Enter hole indices (comma separated, e.g. 0,2,5):"),
+             detectedHoleCount >= 0
+                ? tr("Detected %1 hole(s). Enter hole indices (comma separated, e.g. 0,2,5):").arg(detectedHoleCount)
+                : tr("Enter hole indices (comma separated, e.g. 0,2,5):"),
             QLineEdit::Normal,
             QString(),
             &ok

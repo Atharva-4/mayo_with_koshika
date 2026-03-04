@@ -87,4 +87,6 @@ bool rayIntersectTriangle(const glm::vec3& orig, const glm::vec3& dir,
     float& tOut);
 void extractHoleBoundaries();
 void buildGLMesh(const SurfaceMesh& m, GLMesh& g);
+
 void drawLoadingText();
+std::optional<std::size_t> detectHoleCountFromStl(const std::string& stlFilepath);
