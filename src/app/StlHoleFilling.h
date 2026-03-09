@@ -50,6 +50,11 @@ namespace Mayo {
     std::size_t countHolesCGAL(const SurfaceMesh& mesh);
     void fillHolesCGAL(SurfaceMesh& mesh);
     void fillSelectedHolesCGAL(SurfaceMesh& mesh, const std::vector<int>& selectedHoleIds);
+
+    // ---- Extract hole boundary cycles (new) ----
+    // Returns one boundary loop per hole; each loop is a vector of CGAL::Point_3
+    std::vector<std::vector<Point>> extractHoleBoundaries(const SurfaceMesh& mesh);
+
     // ---- Output ----
     void writeSTL(const std::string& filename, const SurfaceMesh& mesh);
 

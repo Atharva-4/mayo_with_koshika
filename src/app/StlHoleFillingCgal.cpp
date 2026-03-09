@@ -174,6 +174,28 @@ namespace Mayo {
         return boundaries.size();
     }
 
+    std::vector<std::vector<Point>> extractHoleBoundaries(const SurfaceMesh& mesh)
+    {
+        std::vector<std::vector<Point>> result;
+        std::vector<SurfaceMesh::Halfedge_index> boundaries;
+        PMP::extract_boundary_cycles(mesh, std::back_inserter(boundaries));
+
+        for (const auto& h0 : boundaries) {
+            if (h0 == SurfaceMesh::null_halfedge())
+                continue;
+
+            std::vector<Point> loop;
+            SurfaceMesh::Halfedge_index h = h0;
+            do {
+                const auto v = mesh.target(h);            // target vertex of halfedge
+                loop.push_back(mesh.point(v));            // point stored in mesh
+                h = mesh.next(h);                         // next halfedge around face
+            } while (h != h0);
+            result.push_back(std::move(loop));
+        }
+
+        return result;
+    }
 
     void fillHolesCGAL(SurfaceMesh& mesh) {
         std::vector<SurfaceMesh::Halfedge_index> boundaries;
