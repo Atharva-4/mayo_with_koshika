@@ -26,6 +26,8 @@
 #include "HoleFillingUtils.h"
 #include <QListWidget>
 
+#include <QCoreApplication>
+#include <QProcess>
 
 #include <gp_Dir.hxx>
 #include <gp_Pnt.hxx>
@@ -569,7 +571,110 @@ namespace Mayo {
         );
     }
 
+    ///////////////////////////////////////////////////////////////////
+//
+// Point to Surface Command
+//
+///////////////////////////////////////////////////////////////////
 
+    CommandPointToSurface::CommandPointToSurface(IAppContext* context)
+        : Command(context)
+    {
+        auto action = new QAction(this);
+        action->setText(Command::tr("Point to Surface"));
+        action->setToolTip(Command::tr("Reconstruct surface from point cloud (PLY input)"));
+        this->setAction(action);
+    }
+    void CommandPointToSurface::execute()
+    {
+        QWidget* parent = this->widgetMain();
 
+        // User picks input PLY file
+        const QString inputPly = QFileDialog::getOpenFileName(
+            parent,
+            tr("Select Input PLY File"),
+            QString(),
+            tr("PLY Files (*.ply);;All Files (*)")
+        );
+        if (inputPly.isEmpty())
+            return;
+
+        // User picks output OBJ path
+        const QString outputObj = QFileDialog::getSaveFileName(
+            parent,
+            tr("Save Output OBJ File"),
+            QFileInfo(inputPly).completeBaseName() + "_surface.obj",
+            tr("OBJ Files (*.obj);;All Files (*)")
+        );
+        if (outputObj.isEmpty())
+            return;
+
+        const QString appDir = QCoreApplication::applicationDirPath();
+
+        // Call ONLY ply2objwithnormal.exe — it calls recon.exe internally
+        QProcess process;
+        process.setWorkingDirectory(appDir);  // important! recon.exe must be found here
+        process.start(appDir + "/ply2objwithnormal.exe",
+            QStringList() << inputPly << outputObj);
+        process.waitForFinished(-1);
+
+        if (process.exitCode() != 0) {
+            QMessageBox::critical(parent, tr("Point to Surface"),
+                tr("ply2objwithnormal.exe failed!\nMake sure recon.exe is in the same folder as mayo.exe"));
+            return;
+        }
+
+        QMessageBox::information(parent, tr("Point to Surface"),
+            tr("Surface reconstruction complete!\nOutput saved to:\n%1").arg(outputObj));
+    }
+
+    //void CommandPointToSurface::execute()
+    //{
+    //    QWidget* parent = this->widgetMain();
+
+    //    // Step 1: User picks input PLY file
+    //    const QString inputPly = QFileDialog::getOpenFileName(
+    //        parent,
+    //        tr("Select Input PLY File"),
+    //        QString(),
+    //        tr("PLY Files (*.ply);;All Files (*)")
+    //    );
+    //    if (inputPly.isEmpty())
+    //        return;
+
+    //    // Step 2: User picks where to save output OBJ
+    //    const QString outputObj = QFileDialog::getSaveFileName(
+    //        parent,
+    //        tr("Save Output OBJ File"),
+    //        QFileInfo(inputPly).completeBaseName() + "_surface.obj",
+    //        tr("OBJ Files (*.obj);;All Files (*)")
+    //    );
+    //    if (outputObj.isEmpty())
+    //        return;
+
+    //    const QString appDir = QCoreApplication::applicationDirPath();
+    //    const QString tempObj = appDir + "/temp_surface_normals.obj";
+
+    //    // Step 3: Run ply2objwithnormal.exe
+    //    const QString prog1 = appDir + QDir::separator() + QStringLiteral("ply2objwithnormal.exe");
+    //    const QStringList args1 = { inputPly, tempObj };
+    //    if (QProcess::execute(prog1, args1) != 0) {
+    //        QMessageBox::critical(parent, tr("Point to Surface"),
+    //            tr("ply2objwithnormal.exe failed!\nMake sure it is placed next to mayo.exe"));
+    //        return;
+    //    }
+
+    //    // Step 4: Run recon.exe
+    //    const QString prog2 = appDir + QDir::separator() + QStringLiteral("recon.exe");
+    //    const QStringList args2 = { tempObj, outputObj };
+    //    if (QProcess::execute(prog2, args2) != 0) {
+    //        QMessageBox::critical(parent, tr("Point to Surface"),
+    //            tr("recon.exe failed!\nCheck the input file."));
+    //        return;
+    //    }
+
+    //    QMessageBox::information(parent, tr("Point to Surface"),
+    //        tr("Surface reconstruction complete!\nOutput saved to:\n%1").arg(outputObj));
+    //}
 
 } // namespace Mayo

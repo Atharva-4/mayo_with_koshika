@@ -163,6 +163,7 @@ void MainWindow::createCommands()
     // Add the hole-filling commands so their QAction can be used in menus
     this->addCommand<CommandHoleFillingFull>();
     this->addCommand<CommandHoleFillingSelected>();
+    this->addCommand<CommandPointToSurface>();
     
 
 
@@ -236,6 +237,7 @@ void MainWindow::createMenus()
         QMenu* menuHole = menu->addMenu(tr("Hole Filling"));
         fnAddAction(menuHole, CommandHoleFillingFull::Name);      // Fill Holes (All)
         fnAddAction(menuHole, CommandHoleFillingSelected::Name);  // Fill Holes (Selected - stub)
+        fnAddAction(menu, CommandPointToSurface::Name);
 
 
     }

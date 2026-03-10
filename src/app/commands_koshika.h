@@ -53,6 +53,12 @@ namespace Mayo {
         bool m_isRunning = false;
     };
 
+    class CommandPointToSurface : public Command {
+    public:
+        CommandPointToSurface(IAppContext* context);
+        void execute() override;
+        static constexpr std::string_view Name = "pointtosurface";
+    };
 
     
 
